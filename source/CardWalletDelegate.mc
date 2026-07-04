@@ -1,7 +1,8 @@
 using Toybox.WatchUi;
 using Toybox.Lang;
 
-// Swipe omhoog/omlaag = bladeren, tik = scanbare code tonen, menu = favoriet.
+// Swipe = bladeren door kaarten + Sync-tegel. Tik op een kaart = code tonen,
+// tik op de Sync-tegel = synchroniseren. Menu-knop (indien aanwezig) = favoriet.
 class CardWalletDelegate extends WatchUi.BehaviorDelegate {
 
     var view as CardWalletView;
@@ -11,7 +12,6 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         view = v;
     }
 
-    // Horizontaal vegen om door de kaarten te bladeren (wallet-gevoel).
     function onSwipe(swipeEvent as WatchUi.SwipeEvent) as Lang.Boolean {
         var dir = swipeEvent.getDirection();
         if (dir == WatchUi.SWIPE_LEFT) {
@@ -36,6 +36,11 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onSelect() as Lang.Boolean {
+        if (view.onSyncTile()) {
+            var sv = new SyncView();
+            WatchUi.pushView(sv, new SyncDelegate(sv), WatchUi.SLIDE_LEFT);
+            return true;
+        }
         var card = view.current();
         if (card == null) {
             return true;
@@ -46,40 +51,13 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
+    // Menu-knop (indien het toestel er een heeft): favoriet aan/uit.
     function onMenu() as Lang.Boolean {
-        var menu = new WatchUi.Menu2({ :title => "Menu" });
-        menu.addItem(new WatchUi.MenuItem("Sync met webapp", null, "sync", {}));
-        if (view.current() != null) {
-            var fav = view.current().get("favorite") == true;
-            menu.addItem(new WatchUi.MenuItem(fav ? "Favoriet weghalen" : "Favoriet maken", null, "fav", {}));
+        var card = view.current();
+        if (card != null) {
+            CardStore.toggleFavorite(card.get("id") as Lang.String);
+            view.onShow();
         }
-        WatchUi.pushView(menu, new WalletMenuDelegate(view), WatchUi.SLIDE_UP);
         return true;
-    }
-}
-
-// Acties-menu vanuit de wallet.
-class WalletMenuDelegate extends WatchUi.Menu2InputDelegate {
-    var view as CardWalletView;
-
-    function initialize(v as CardWalletView) {
-        Menu2InputDelegate.initialize();
-        view = v;
-    }
-
-    function onSelect(item as WatchUi.MenuItem) as Void {
-        var id = item.getId();
-        if (id.equals("sync")) {
-            WatchUi.popView(WatchUi.SLIDE_DOWN);
-            var sv = new SyncView();
-            WatchUi.pushView(sv, new SyncDelegate(sv), WatchUi.SLIDE_LEFT);
-        } else if (id.equals("fav")) {
-            var card = view.current();
-            if (card != null) {
-                CardStore.toggleFavorite(card.get("id") as Lang.String);
-                view.onShow();
-            }
-            WatchUi.popView(WatchUi.SLIDE_DOWN);
-        }
     }
 }

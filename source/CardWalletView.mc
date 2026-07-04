@@ -18,35 +18,39 @@ class CardWalletView extends WatchUi.View {
 
     function onShow() as Void {
         cards = CardStore.getCards();
-        if (index >= cards.size()) {
-            index = (cards.size() > 0) ? cards.size() - 1 : 0;
+        // slides = alle kaarten + 1 Sync-tegel aan het eind.
+        if (index >= slideCount()) {
+            index = slideCount() - 1;
         }
+        if (index < 0) { index = 0; }
         WatchUi.requestUpdate();
     }
 
-    function count() as Lang.Number {
-        return cards.size();
+    // Aantal slides incl. de Sync-tegel.
+    function slideCount() as Lang.Number {
+        return cards.size() + 1;
+    }
+
+    // true als we op de Sync-tegel staan (de laatste slide).
+    function onSyncTile() as Lang.Boolean {
+        return index == cards.size();
     }
 
     function current() as Lang.Dictionary? {
-        if (cards.size() == 0) {
+        if (onSyncTile() || cards.size() == 0) {
             return null;
         }
         return cards[index];
     }
 
     function next() as Void {
-        if (cards.size() > 0) {
-            index = (index + 1) % cards.size();
-            WatchUi.requestUpdate();
-        }
+        index = (index + 1) % slideCount();
+        WatchUi.requestUpdate();
     }
 
     function prev() as Void {
-        if (cards.size() > 0) {
-            index = (index - 1 + cards.size()) % cards.size();
-            WatchUi.requestUpdate();
-        }
+        index = (index - 1 + slideCount()) % slideCount();
+        WatchUi.requestUpdate();
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
@@ -58,15 +62,10 @@ class CardWalletView extends WatchUi.View {
         var cx = w / 2;
         var cy = h / 2;
 
-        if (cards.size() == 0) {
-            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy - 24, Graphics.FONT_SMALL, "CardVault",
-                Graphics.TEXT_JUSTIFY_CENTER);
-            dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy + 14, Graphics.FONT_XTINY, "Voeg kaarten toe",
-                Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(cx, cy + 36, Graphics.FONT_XTINY, "via Garmin Connect",
-                Graphics.TEXT_JUSTIFY_CENTER);
+        // Laatste slide = Sync-tegel.
+        if (onSyncTile()) {
+            drawSyncTile(dc, cx, cy, w, h);
+            drawDots(dc, cx, cy + (h * 0.28).toNumber() + 30);
             return;
         }
 
@@ -150,17 +149,38 @@ class CardWalletView extends WatchUi.View {
         drawDots(dc, cx, cardY + cardH + 20);
     }
 
+    // Sync-tegel: altijd bereikbaar door voorbij de laatste kaart te swipen.
+    function drawSyncTile(dc as Graphics.Dc, cx as Lang.Number, cy as Lang.Number, w as Lang.Number, h as Lang.Number) as Void {
+        var tileW = (w * 0.76).toNumber();
+        var tileH = (h * 0.56).toNumber();
+        var tx = cx - tileW / 2;
+        var ty = cy - tileH / 2 - 10;
+
+        dc.setColor(0x1A2A3A, Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle(tx, ty, tileW, tileH, 22);
+        dc.setColor(0x5B9DFF, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, ty + 24, Graphics.FONT_TINY, "SYNC", Graphics.TEXT_JUSTIFY_CENTER);
+
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, ty + tileH / 2 - 34, Graphics.FONT_XTINY, "Koppelcode", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, ty + tileH / 2 + 4, Graphics.FONT_NUMBER_MEDIUM, Sync.deviceCode(),
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, ty + tileH - 30, Graphics.FONT_XTINY, "Tik om op te halen", Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
     function drawDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {
-        var n = cards.size();
+        var n = slideCount();
         if (n <= 1) {
             return;
         }
-        var maxDots = 7;
+        var maxDots = 8;
         var shown = (n < maxDots) ? n : maxDots;
         var spacing = 16;
         var startX = cx - ((shown - 1) * spacing) / 2;
         for (var i = 0; i < shown; i++) {
-            var active = (i == index) || (shown < n && i == shown - 1 && index >= shown - 1);
             if (i == index) {
                 dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
                 dc.fillCircle(startX + i * spacing, y, 4);
