@@ -7,8 +7,8 @@ using Toybox.Math;
 // het horloge haalt ze op.
 module Sync {
 
-    // Pas dit aan naar jouw Render-URL na deploy (zonder schuine streep aan het eind).
-    const SERVER_URL = "https://cardvault.onrender.com";
+    // Render-URL (zonder schuine streep aan het eind).
+    const SERVER_URL = "https://cardvault-server.onrender.com";
 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // zonder I,O,0,1 (verwarrend)
 
