@@ -1,0 +1,9 @@
+# Signing key — NOOIT publiek
+developer_key
+*.der
+
+# Build-output
+bin/
+
+# Systeem
+.DS_Store
