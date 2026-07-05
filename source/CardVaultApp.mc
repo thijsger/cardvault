@@ -9,11 +9,9 @@ class CardVaultApp extends Application.AppBase {
     }
 
     function onStart(state as Lang.Dictionary?) as Void {
-        // TIJDELIJKE TESTDATA voor visuele controle in de simulator.
-        var test = "barcode|Sportschool|Lidmaatschap|blue|card|9501101530003|CODE128|Sport\n"
-                 + "totp|GitHub|jij@mail.com|dkgray|lock|JBSWY3DPEHPK3PXP|SHA1:6:30|2FA\n"
-                 + "qr|Concertticket|Zaal 4|purple|ticket|https://cardvault.app/t/9F2A|QR|Tickets";
-        SettingsParser.reloadFromText(test);
+        // Bouw kaarten uit Garmin Connect-instellingen; bij lege instellingen
+        // val terug op eerder via de webapp gesyncte kaarten.
+        SettingsParser.reload();
     }
 
     function onStop(state as Lang.Dictionary?) as Void {}

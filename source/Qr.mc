@@ -2,8 +2,10 @@ using Toybox.Lang;
 
 // QR-encoder: byte-mode, error-correctielevel M, versies 1-10 (21x21 t/m 57x57).
 // Geport van een geverifieerde referentie (RS-syndromen nul voor alle versies,
-// inclusief multi-block interleaving). Geeft een vierkante matrix van 0/1 terug
-// die de renderer als zwart/wit tekent.
+// inclusief multi-block interleaving). Gebruikt platte ByteArrays voor de matrix
+// (veel sneller dan geneste arrays in Monkey C) en vast masker 0 om binnen de
+// watchdog-tijd te blijven; het gebruikte masker staat in de format-bits, dus
+// elke scanner leest dit gewoon.
 module Qr {
 
     // Per versie (1..10) bij level M:
@@ -21,7 +23,6 @@ module Qr {
         [216, 26, 4, 43, 1, 44]
     ];
 
-    // Uitlijnpatroon-centra per versie.
     const ALIGN = [
         [], [6, 18], [6, 22], [6, 26], [6, 30],
         [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50]
@@ -49,7 +50,6 @@ module Qr {
         return _exp[_log[a] + _log[b]];
     }
 
-    // Reed-Solomon generatorpolynoom van graad deg (deg+1 coëfficiënten).
     function rsGen(deg as Lang.Number) as Lang.Array<Lang.Number> {
         var g = [1] as Lang.Array<Lang.Number>;
         for (var i = 0; i < deg; i++) {
@@ -64,9 +64,7 @@ module Qr {
         return g;
     }
 
-    // ECC-codewords voor één datablok.
-    function rsEcc(data as Lang.Array<Lang.Number>, deg as Lang.Number) as Lang.Array<Lang.Number> {
-        var gen = rsGen(deg);
+    function rsEcc(data as Lang.Array<Lang.Number>, deg as Lang.Number, gen as Lang.Array<Lang.Number>) as Lang.Array<Lang.Number> {
         var msg = new [data.size() + deg] as Lang.Array<Lang.Number>;
         for (var i = 0; i < data.size(); i++) { msg[i] = data[i]; }
         for (var i = data.size(); i < msg.size(); i++) { msg[i] = 0; }
@@ -93,17 +91,16 @@ module Qr {
         for (var v = 1; v <= 10; v++) {
             if (capacityBytes(v) >= n) { return v; }
         }
-        return -1; // te lang
+        return -1;
     }
 
-    // Tekst -> data-codewords (met mode, count, terminator, padding).
     function encodeCodewords(bytes as Lang.ByteArray, v as Lang.Number) as Lang.Array<Lang.Number> {
         var n = bytes.size();
         var total = VERSION_M[v - 1][0];
         var countBits = (v < 10) ? 8 : 16;
 
         var bits = [] as Lang.Array<Lang.Number>;
-        putBits(bits, 0x4, 4);         // byte-mode
+        putBits(bits, 0x4, 4);
         putBits(bits, n, countBits);
         for (var i = 0; i < n; i++) { putBits(bits, bytes[i] & 0xFF, 8); }
 
@@ -130,13 +127,13 @@ module Qr {
         for (var i = len - 1; i >= 0; i--) { bits.add((val >> i) & 1); }
     }
 
-    // Interleave data + ECC-blokken tot de definitieve codeword-stroom.
     function interleave(cw as Lang.Array<Lang.Number>, v as Lang.Number) as Lang.Array<Lang.Number> {
         var spec = VERSION_M[v - 1];
         var eccPer = spec[1];
         var g1 = spec[2]; var d1 = spec[3];
         var g2 = spec[4]; var d2 = spec[5];
         var nb = g1 + g2;
+        var gen = rsGen(eccPer);
 
         var blocks = [] as Lang.Array;
         var eccs = [] as Lang.Array;
@@ -146,7 +143,7 @@ module Qr {
             var blk = new [dlen] as Lang.Array<Lang.Number>;
             for (var i = 0; i < dlen; i++) { blk[i] = cw[idx]; idx++; }
             blocks.add(blk);
-            eccs.add(rsEcc(blk, eccPer));
+            eccs.add(rsEcc(blk, eccPer, gen));
         }
 
         var out = [] as Lang.Array<Lang.Number>;
@@ -166,29 +163,28 @@ module Qr {
         return out;
     }
 
-    // ---- masker-functies ----
-    function maskBit(mask as Lang.Number, r as Lang.Number, c as Lang.Number) as Lang.Boolean {
-        if (mask == 0) { return (r + c) % 2 == 0; }
-        if (mask == 1) { return r % 2 == 0; }
-        if (mask == 2) { return c % 3 == 0; }
-        if (mask == 3) { return (r + c) % 3 == 0; }
-        if (mask == 4) { return (r / 2 + c / 3) % 2 == 0; }
-        if (mask == 5) { return ((r * c) % 2 + (r * c) % 3) == 0; }
-        if (mask == 6) { return ((r * c) % 2 + (r * c) % 3) % 2 == 0; }
-        return ((r + c) % 2 + (r * c) % 3) % 2 == 0;
-    }
-
-    const FMT_POLY = 0x537; // 0b10100110111
+    // Masker 0: (r+c) % 2 == 0.
+    const FMT_POLY = 0x537;
     function formatBits(mask as Lang.Number) as Lang.Number {
-        var d = (0x0 << 3) | mask;   // ECL M = 0b00
+        var d = (0x0 << 3) | mask;
         var rem = d << 10;
         for (var i = 14; i >= 10; i--) {
             if (((rem >> i) & 1) != 0) { rem = rem ^ (FMT_POLY << (i - 10)); }
         }
-        return ((d << 10) | rem) ^ 0x5412; // 0b101010000010010
+        return ((d << 10) | rem) ^ 0x5412;
     }
 
-    // Hoofdfunctie: tekst -> matrix (Array van Array<Number> met 0/1), of null.
+    // Platte matrix-helpers: index = r*size + c.
+    function mget(m as Lang.ByteArray, size as Lang.Number, r as Lang.Number, c as Lang.Number) as Lang.Number {
+        return m[r * size + c];
+    }
+    function mset(m as Lang.ByteArray, func as Lang.ByteArray, size as Lang.Number, r as Lang.Number, c as Lang.Number, val as Lang.Number) as Void {
+        m[r * size + c] = val;
+        func[r * size + c] = 1;
+    }
+
+    // Hoofdfunctie: tekst -> platte ByteArray-matrix (size*size van 0/1) of null.
+    // Geeft [size, matrix] terug.
     function encode(text as Lang.String) as Lang.Array or Null {
         initGf();
         var bytes = strToBytes(text);
@@ -198,53 +194,49 @@ module Qr {
         var cw = encodeCodewords(bytes, v);
         var data = interleave(cw, v);
         var size = 17 + 4 * v;
+        var total = size * size;
 
-        // matrix + functie-masker
-        var m = new [size] as Lang.Array;
-        var func = new [size] as Lang.Array;
-        for (var r = 0; r < size; r++) {
-            m[r] = new [size] as Lang.Array<Lang.Number>;
-            func[r] = new [size] as Lang.Array<Lang.Number>;
-            for (var c = 0; c < size; c++) { m[r][c] = 0; func[r][c] = 0; }
-        }
+        var m = new [total]b;
+        var func = new [total]b;
+        for (var i = 0; i < total; i++) { m[i] = 0; func[i] = 0; }
 
         placeFinder(m, func, size, 0, 0);
         placeFinder(m, func, size, 0, size - 7);
         placeFinder(m, func, size, size - 7, 0);
 
         for (var i = 0; i < size; i++) {
-            if (func[6][i] == 0) { setF(m, func, 6, i, (i % 2 == 0) ? 1 : 0); }
-            if (func[i][6] == 0) { setF(m, func, i, 6, (i % 2 == 0) ? 1 : 0); }
+            if (func[6 * size + i] == 0) { mset(m, func, size, 6, i, (i % 2 == 0) ? 1 : 0); }
+            if (func[i * size + 6] == 0) { mset(m, func, size, i, 6, (i % 2 == 0) ? 1 : 0); }
         }
 
         var pos = ALIGN[v - 1];
         for (var a = 0; a < pos.size(); a++) {
             for (var bb = 0; bb < pos.size(); bb++) {
                 var pr = pos[a]; var pc = pos[bb];
-                if (func[pr][pc] != 0) { continue; }
+                if (func[pr * size + pc] != 0) { continue; }
                 var clear = true;
                 for (var dr = -2; dr <= 2 && clear; dr++) {
                     for (var dc = -2; dc <= 2; dc++) {
-                        if (func[pr + dr][pc + dc] != 0) { clear = false; }
+                        if (func[(pr + dr) * size + (pc + dc)] != 0) { clear = false; }
                     }
                 }
                 if (!clear) { continue; }
                 for (var dr = -2; dr <= 2; dr++) {
                     for (var dc = -2; dc <= 2; dc++) {
                         var on = (abs(dr) == 2 || abs(dc) == 2 || (dr == 0 && dc == 0));
-                        setF(m, func, pr + dr, pc + dc, on ? 1 : 0);
+                        mset(m, func, size, pr + dr, pc + dc, on ? 1 : 0);
                     }
                 }
             }
         }
 
-        setF(m, func, size - 8, 8, 1); // donkere module
+        mset(m, func, size, size - 8, 8, 1);
 
         // format-gebieden reserveren
-        for (var i = 0; i < 9; i++) { func[8][i] = 1; func[i][8] = 1; }
-        for (var i = 0; i < 8; i++) { func[8][size - 1 - i] = 1; func[size - 1 - i][8] = 1; }
+        for (var i = 0; i < 9; i++) { func[8 * size + i] = 1; func[i * size + 8] = 1; }
+        for (var i = 0; i < 8; i++) { func[8 * size + (size - 1 - i)] = 1; func[(size - 1 - i) * size + 8] = 1; }
 
-        // data plaatsen (zigzag)
+        // data plaatsen (zigzag) + masker 0 direct toepassen
         var totalBits = data.size() * 8;
         var bi = 0;
         var col = size - 1;
@@ -255,12 +247,15 @@ module Qr {
             while (row >= 0 && row < size) {
                 for (var t = 0; t < 2; t++) {
                     var cc = col - t;
-                    if (func[row][cc] == 0) {
+                    var fi = row * size + cc;
+                    if (func[fi] == 0) {
                         var bit = 0;
                         if (bi < totalBits) {
                             bit = (data[bi >> 3] >> (7 - (bi & 7))) & 1;
                         }
-                        m[row][cc] = bit;
+                        // masker 0
+                        if ((row + cc) % 2 == 0) { bit = bit ^ 1; }
+                        m[fi] = bit;
                         bi++;
                     }
                 }
@@ -270,78 +265,22 @@ module Qr {
             col -= 2;
         }
 
-        // beste masker kiezen op penalty
-        var best = null;
-        var bestPen = -1;
-        for (var mask = 0; mask < 8; mask++) {
-            var mm = applyMaskAndFormat(m, func, size, mask);
-            var pen = penalty(mm, size);
-            if (bestPen < 0 || pen < bestPen) { bestPen = pen; best = mm; }
-        }
-        return best;
+        // format-bits plaatsen (masker 0)
+        var fb = formatBits(0);
+        for (var i = 0; i < 6; i++) { m[8 * size + i] = (fb >> i) & 1; }
+        m[8 * size + 7] = (fb >> 6) & 1; m[8 * size + 8] = (fb >> 7) & 1; m[7 * size + 8] = (fb >> 8) & 1;
+        for (var i = 9; i < 15; i++) { m[(14 - i) * size + 8] = (fb >> i) & 1; }
+        for (var i = 0; i < 8; i++) { m[(size - 1 - i) * size + 8] = (fb >> i) & 1; }
+        for (var i = 8; i < 15; i++) { m[8 * size + (size - 8 + (i - 7))] = (fb >> i) & 1; }
+
+        return [size, m];
     }
 
-    function applyMaskAndFormat(m as Lang.Array, func as Lang.Array, size as Lang.Number, mask as Lang.Number) as Lang.Array {
-        var mm = new [size] as Lang.Array;
-        for (var r = 0; r < size; r++) {
-            mm[r] = new [size] as Lang.Array<Lang.Number>;
-            for (var c = 0; c < size; c++) {
-                var val = m[r][c];
-                if (func[r][c] == 0 && maskBit(mask, r, c)) { val = val ^ 1; }
-                mm[r][c] = val;
-            }
-        }
-        var fb = formatBits(mask);
-        for (var i = 0; i < 6; i++) { mm[8][i] = (fb >> i) & 1; }
-        mm[8][7] = (fb >> 6) & 1; mm[8][8] = (fb >> 7) & 1; mm[7][8] = (fb >> 8) & 1;
-        for (var i = 9; i < 15; i++) { mm[14 - i][8] = (fb >> i) & 1; }
-        for (var i = 0; i < 8; i++) { mm[size - 1 - i][8] = (fb >> i) & 1; }
-        for (var i = 8; i < 15; i++) { mm[8][size - 8 + (i - 7)] = (fb >> i) & 1; }
-        return mm;
+    function setF(m as Lang.ByteArray, func as Lang.ByteArray, r as Lang.Number, c as Lang.Number, val as Lang.Number, size as Lang.Number) as Void {
+        m[r * size + c] = val; func[r * size + c] = 1;
     }
 
-    function penalty(mm as Lang.Array, size as Lang.Number) as Lang.Number {
-        var p = 0;
-        // regel 1: runs van 5+ in rijen en kolommen
-        for (var r = 0; r < size; r++) {
-            var run = 1;
-            for (var c = 1; c < size; c++) {
-                if (mm[r][c] == mm[r][c - 1]) { run++; }
-                else { if (run >= 5) { p += 3 + (run - 5); } run = 1; }
-            }
-            if (run >= 5) { p += 3 + (run - 5); }
-        }
-        for (var c = 0; c < size; c++) {
-            var run = 1;
-            for (var r = 1; r < size; r++) {
-                if (mm[r][c] == mm[r - 1][c]) { run++; }
-                else { if (run >= 5) { p += 3 + (run - 5); } run = 1; }
-            }
-            if (run >= 5) { p += 3 + (run - 5); }
-        }
-        // regel 2: 2x2 blokken
-        for (var r = 0; r < size - 1; r++) {
-            for (var c = 0; c < size - 1; c++) {
-                var val = mm[r][c];
-                if (mm[r][c + 1] == val && mm[r + 1][c] == val && mm[r + 1][c + 1] == val) { p += 3; }
-            }
-        }
-        // regel 4: donker-ratio
-        var dark = 0;
-        for (var r = 0; r < size; r++) {
-            for (var c = 0; c < size; c++) { dark += mm[r][c]; }
-        }
-        var ratio = dark * 100 / (size * size);
-        p += (abs(ratio - 50) / 5) * 10;
-        return p;
-    }
-
-    // ---- helpers ----
-    function setF(m as Lang.Array, func as Lang.Array, r as Lang.Number, c as Lang.Number, val as Lang.Number) as Void {
-        m[r][c] = val; func[r][c] = 1;
-    }
-
-    function placeFinder(m as Lang.Array, func as Lang.Array, size as Lang.Number, r as Lang.Number, c as Lang.Number) as Void {
+    function placeFinder(m as Lang.ByteArray, func as Lang.ByteArray, size as Lang.Number, r as Lang.Number, c as Lang.Number) as Void {
         for (var dr = -1; dr <= 7; dr++) {
             for (var dc = -1; dc <= 7; dc++) {
                 var rr = r + dr; var cc = c + dc;
@@ -349,7 +288,7 @@ module Qr {
                     var on = ((dr >= 0 && dr <= 6 && (dc == 0 || dc == 6)) ||
                               (dc >= 0 && dc <= 6 && (dr == 0 || dr == 6)) ||
                               (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4));
-                    setF(m, func, rr, cc, on ? 1 : 0);
+                    mset(m, func, size, rr, cc, on ? 1 : 0);
                 }
             }
         }
@@ -357,7 +296,6 @@ module Qr {
 
     function abs(x as Lang.Number) as Lang.Number { return (x < 0) ? -x : x; }
 
-    // UTF-8 bytes van een string.
     function strToBytes(text as Lang.String) as Lang.ByteArray {
         var chars = text.toUtf8Array();
         var b = new [chars.size()]b;

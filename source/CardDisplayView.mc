@@ -15,8 +15,8 @@ class CardDisplayView extends WatchUi.View {
     var secondsShown as Lang.Number;
     var favoriteFlashUntil as Lang.Number;
     var favoriteFlashText as Lang.String;
-    var qrMatrix as Lang.Array?;      // gecachte QR-matrix (zwaar om te berekenen)
-    var qrTried as Lang.Boolean;
+    var qrSize as Lang.Number;        // 0 = geen/niet-berekend
+    var qrData as Lang.ByteArray?;     // platte QR-matrix (size*size)
 
     function initialize(c as Lang.Dictionary) {
         View.initialize();
@@ -26,8 +26,17 @@ class CardDisplayView extends WatchUi.View {
         secondsShown = 0;
         favoriteFlashUntil = 0;
         favoriteFlashText = "";
-        qrMatrix = null;
-        qrTried = false;
+        qrSize = 0;
+        qrData = null;
+
+        // QR nu berekenen (buiten onUpdate, zodat de teken-watchdog niet tript).
+        if ((c.get("type") as Lang.String).equals("qr")) {
+            var res = Qr.encode(c.get("data") as Lang.String);
+            if (res != null) {
+                qrSize = res[0] as Lang.Number;
+                qrData = res[1] as Lang.ByteArray;
+            }
+        }
     }
 
     function toggleInvert() as Void {
@@ -99,8 +108,9 @@ class CardDisplayView extends WatchUi.View {
         var cx = w / 2;
         var cy = h / 2;
         // Veilige zone: op ronde schermen worden rand-gebieden afgesneden.
-        // We tekenen titel + code + nummer als één blok rond het midden.
-        var margin = (rotated ? h : w) * 0.14;
+        // De band staat verticaal gecentreerd, dus horizontaal is daar bijna
+        // de volle breedte beschikbaar — kleine marge volstaat als quiet zone.
+        var margin = (rotated ? h : w) * 0.08;
 
         var format = card.get("format") as Lang.String;
         var data = card.get("data") as Lang.String;
@@ -112,7 +122,8 @@ class CardDisplayView extends WatchUi.View {
         }
 
         // Barcode-band iets boven het midden, zodat titel (boven) en nummer
-        // (onder) in de cirkel passen.
+        // (onder) in de cirkel passen. In gedraaide stand: geen tekst (Garmin
+        // kan tekst niet roteren) en de code zo lang mogelijk — puur voor de scanner.
         var barBandHeight = ((rotated ? w : h) * 0.34).toNumber();
         var axisLen = ((rotated ? h : w) - 2 * margin).toNumber();
         var moduleSize = axisLen / bits.length();
@@ -123,14 +134,10 @@ class CardDisplayView extends WatchUi.View {
         var start = ((rotated ? h : w) - totalLen) / 2;
         var bandStart = ((rotated ? w : h) - barBandHeight) / 2;
 
-        // Titel ruim boven de band (extra marge zodat tekst de bars niet raakt).
-        dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
-        if (rotated) {
-            dc.drawText(cx - barBandHeight / 2 - 30, cy, Graphics.FONT_TINY,
-                card.get("label") as Lang.String,
-                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        } else {
-            dc.drawText(cx, bandStart - 54, Graphics.FONT_TINY,
+        // Titel ruim boven de band (alleen in normale stand).
+        if (!rotated) {
+            dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, bandStart - 74, Graphics.FONT_TINY,
                 card.get("label") as Lang.String, Graphics.TEXT_JUSTIFY_CENTER);
         }
 
@@ -154,13 +161,10 @@ class CardDisplayView extends WatchUi.View {
             }
         }
 
-        // Nummer direct onder de band (binnen de cirkel).
-        dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
-        if (rotated) {
-            dc.drawText(cx + barBandHeight / 2 + 22, cy, Graphics.FONT_TINY, data,
-                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        } else {
-            dc.drawText(cx, bandStart + barBandHeight + 14, Graphics.FONT_TINY, data,
+        // Nummer met wat lucht onder de band (alleen in normale stand).
+        if (!rotated) {
+            dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, bandStart + barBandHeight + 34, Graphics.FONT_TINY, data,
                 Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
@@ -171,19 +175,14 @@ class CardDisplayView extends WatchUi.View {
         var cx = w / 2;
         var cy = h / 2;
 
-        if (!qrTried) {
-            qrTried = true;
-            qrMatrix = Qr.encode(card.get("data") as Lang.String);
-        }
-
-        if (qrMatrix == null) {
+        if (qrSize == 0 || qrData == null) {
             dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cx, cy, Graphics.FONT_TINY, "QR te lang", Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
             return;
         }
 
-        var matrix = qrMatrix as Lang.Array;
-        var n = matrix.size();
+        var n = qrSize;
+        var mm = qrData as Lang.ByteArray;
         // Grootste vierkant met quiet zone dat op het ronde scherm past.
         var avail = ((w < h ? w : h) * 0.82).toNumber();
         var modSize = avail / (n + 8); // 4 modules quiet zone rondom
@@ -200,9 +199,9 @@ class CardDisplayView extends WatchUi.View {
         // modules
         dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
         for (var r = 0; r < n; r++) {
-            var rowArr = matrix[r] as Lang.Array<Lang.Number>;
+            var base = r * n;
             for (var c = 0; c < n; c++) {
-                if (rowArr[c] != 0) {
+                if (mm[base + c] != 0) {
                     dc.fillRectangle(startX + c * modSize, startY + r * modSize, modSize, modSize);
                 }
             }
