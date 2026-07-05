@@ -265,13 +265,16 @@ module Qr {
             col -= 2;
         }
 
-        // format-bits plaatsen (masker 0)
+        // Format-bits plaatsen (masker 0). Bit i wordt gespiegeld geplaatst
+        // (14 - i): de QR-spec nummert de format-bits andersom dan de
+        // plaatsingsvolgorde, en scanners lezen de format-info als eerste —
+        // stond dit verkeerd om, dan mislukte de hele decode.
         var fb = formatBits(0);
-        for (var i = 0; i < 6; i++) { m[8 * size + i] = (fb >> i) & 1; }
-        m[8 * size + 7] = (fb >> 6) & 1; m[8 * size + 8] = (fb >> 7) & 1; m[7 * size + 8] = (fb >> 8) & 1;
-        for (var i = 9; i < 15; i++) { m[(14 - i) * size + 8] = (fb >> i) & 1; }
-        for (var i = 0; i < 8; i++) { m[(size - 1 - i) * size + 8] = (fb >> i) & 1; }
-        for (var i = 8; i < 15; i++) { m[8 * size + (size - 8 + (i - 7))] = (fb >> i) & 1; }
+        for (var i = 0; i < 6; i++) { m[8 * size + i] = (fb >> (14 - i)) & 1; }
+        m[8 * size + 7] = (fb >> 8) & 1; m[8 * size + 8] = (fb >> 7) & 1; m[7 * size + 8] = (fb >> 6) & 1;
+        for (var i = 9; i < 15; i++) { m[(14 - i) * size + 8] = (fb >> (14 - i)) & 1; }
+        for (var i = 0; i < 8; i++) { m[(size - 1 - i) * size + 8] = (fb >> (14 - i)) & 1; }
+        for (var i = 8; i < 15; i++) { m[8 * size + (size - 8 + (i - 7))] = (fb >> (14 - i)) & 1; }
 
         return [size, m];
     }
