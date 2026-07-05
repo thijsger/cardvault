@@ -16,6 +16,11 @@ class SyncView extends WatchUi.View {
         busy = false;
     }
 
+    // Meteen ophalen zodra het scherm opent (geen extra tik nodig).
+    function onShow() as Void {
+        startPull();
+    }
+
     function startPull() as Void {
         if (busy) { return; }
         busy = true;

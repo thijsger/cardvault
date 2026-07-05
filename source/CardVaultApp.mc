@@ -1,6 +1,8 @@
 using Toybox.Application;
+using Toybox.Application.Storage;
 using Toybox.WatchUi;
 using Toybox.Lang;
+using Toybox.Communications;
 
 class CardVaultApp extends Application.AppBase {
 
@@ -12,6 +14,30 @@ class CardVaultApp extends Application.AppBase {
         // Bouw kaarten uit Garmin Connect-instellingen; bij lege instellingen
         // val terug op eerder via de webapp gesyncte kaarten.
         SettingsParser.reload();
+        // Automatisch nieuwe kaarten ophalen van de server (op de achtergrond).
+        autoSync();
+    }
+
+    // Haalt stil kaarten op voor de koppelcode; nieuwe verschijnen vanzelf.
+    function autoSync() as Void {
+        Communications.makeWebRequest(
+            Sync.pullUrl(),
+            {},
+            {
+                :method => Communications.HTTP_REQUEST_METHOD_GET,
+                :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_TEXT_PLAIN
+            },
+            method(:onSyncData)
+        );
+    }
+
+    function onSyncData(code as Lang.Number, data as Lang.String or Null) as Void {
+        if (code == 200 && data != null && data.toString().length() > 0) {
+            var text = data.toString();
+            Storage.setValue("syncText", text);
+            SettingsParser.mergeFromText(text);
+            WatchUi.requestUpdate();
+        }
     }
 
     function onStop(state as Lang.Dictionary?) as Void {}
