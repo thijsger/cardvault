@@ -23,6 +23,11 @@ class CardVaultApp extends Application.AppBase {
     }
 
     function getInitialView() as [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates] {
+        // Bij een ingestelde pincode eerst het slot tonen.
+        if (Pin.isSet()) {
+            var pv = new PinView(PinView.MODE_UNLOCK);
+            return [pv, new PinDelegate(pv)];
+        }
         var view = new CardWalletView();
         return [view, new CardWalletDelegate(view)];
     }

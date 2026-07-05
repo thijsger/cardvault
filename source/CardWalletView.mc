@@ -9,11 +9,20 @@ class CardWalletView extends WatchUi.View {
 
     var cards as Lang.Array<Lang.Dictionary>;
     var index as Lang.Number;
+    var screenW as Lang.Number;
+    var screenH as Lang.Number;
 
     function initialize() {
         View.initialize();
         cards = [] as Lang.Array<Lang.Dictionary>;
         index = 0;
+        screenW = 260;
+        screenH = 260;
+    }
+
+    function onLayout(dc as Graphics.Dc) as Void {
+        screenW = dc.getWidth();
+        screenH = dc.getHeight();
     }
 
     function onShow() as Void {
@@ -61,6 +70,9 @@ class CardWalletView extends WatchUi.View {
         var h = dc.getHeight();
         var cx = w / 2;
         var cy = h / 2;
+
+        // Menu-knopje (drie puntjes) bovenaan — altijd zichtbaar, tikbaar.
+        drawMenuDots(dc, cx, menuIconY(h));
 
         // Laatste slide = Sync-tegel.
         if (onSyncTile()) {
@@ -172,6 +184,25 @@ class CardWalletView extends WatchUi.View {
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, ty + tileH - 46, Graphics.FONT_XTINY, "Tik om op te halen", Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    // Y-positie van het menu-knopje.
+    function menuIconY(h as Lang.Number) as Lang.Number {
+        return (h * 0.11).toNumber();
+    }
+
+    // Drie horizontale puntjes als menu-affordance.
+    function drawMenuDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(cx - 12, y, 3);
+        dc.fillCircle(cx, y, 3);
+        dc.fillCircle(cx + 12, y, 3);
+    }
+
+    // Ligt (x,y) op het menu-knopje? Ruime trefzone voor gemak.
+    function isMenuTap(x as Lang.Number, y as Lang.Number, w as Lang.Number, h as Lang.Number) as Lang.Boolean {
+        var iy = menuIconY(h);
+        return (y < iy + 40) && (x > w / 2 - 60) && (x < w / 2 + 60);
     }
 
     function drawDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {
