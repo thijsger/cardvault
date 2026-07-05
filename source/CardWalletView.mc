@@ -158,17 +158,20 @@ class CardWalletView extends WatchUi.View {
 
         dc.setColor(0x1A2A3A, Graphics.COLOR_TRANSPARENT);
         dc.fillRoundedRectangle(tx, ty, tileW, tileH, 22);
+
+        // "SYNC" bovenaan, "Koppelcode" eronder, dan de grote code gecentreerd.
         dc.setColor(0x5B9DFF, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + 24, Graphics.FONT_TINY, "SYNC", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, ty + 20, Graphics.FONT_TINY, "SYNC", Graphics.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + tileH / 2 - 34, Graphics.FONT_XTINY, "Koppelcode", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, ty + 54, Graphics.FONT_XTINY, "Koppelcode", Graphics.TEXT_JUSTIFY_CENTER);
+
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + tileH / 2 + 4, Graphics.FONT_NUMBER_MEDIUM, Sync.deviceCode(),
+        dc.drawText(cx, ty + tileH / 2 + 14, Graphics.FONT_NUMBER_MEDIUM, Sync.deviceCode(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + tileH - 30, Graphics.FONT_XTINY, "Tik om op te halen", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, ty + tileH - 46, Graphics.FONT_XTINY, "Tik om op te halen", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function drawDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {
