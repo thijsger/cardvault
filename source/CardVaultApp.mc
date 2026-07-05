@@ -11,15 +11,11 @@ class CardVaultApp extends Application.AppBase {
     }
 
     function onStart(state as Lang.Dictionary?) as Void {
-        // TEMPORARY: demo cards for promo screenshots (English). Altijd forceren
-        // zodat de simulator-opslag ze niet overslaat.
-        SettingsParser.reloadFromText(
-            "barcode|Supermarket|Loyalty card|orange|card|9501101530003|CODE128|Stores\n" +
-            "totp|GitHub|you@mail.com|dkgray|lock|JBSWY3DPEHPK3PXP|SHA1:6:30|2FA\n" +
-            "qr|Concert ticket|Hall 4|purple|ticket|https://cardvault.app/t/9F2A|QR|Tickets\n" +
-            "barcode|Gym|Membership|blue|card|9780201379624|CODE128|Sport\n" +
-            "totp|Google|you@gmail.com|red|lock|JBSWY3DPEHPK3PXP|SHA1:6:30|2FA\n" +
-            "barcode|Library|Card no.|green|book|ABC-1234567|CODE128|Other");
+        // Bouw kaarten uit Garmin Connect-instellingen; bij lege instellingen
+        // val terug op eerder via de webapp gesyncte kaarten.
+        SettingsParser.reload();
+        // Automatisch nieuwe kaarten ophalen van de server (op de achtergrond).
+        autoSync();
     }
 
     // Haalt stil kaarten op voor de koppelcode; nieuwe verschijnen vanzelf.
