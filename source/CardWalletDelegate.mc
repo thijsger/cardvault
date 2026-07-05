@@ -51,13 +51,15 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
+    // Verticaal vegen komt op de Venu 3 binnen als onNextPage/onPreviousPage.
+    // Bladeren doe je met horizontaal vegen, dus verticaal opent het menu.
     function onNextPage() as Lang.Boolean {
-        view.next();
+        openMenu();
         return true;
     }
 
     function onPreviousPage() as Lang.Boolean {
-        view.prev();
+        openMenu();
         return true;
     }
 
