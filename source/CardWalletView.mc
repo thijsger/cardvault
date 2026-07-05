@@ -74,8 +74,8 @@ class CardWalletView extends WatchUi.View {
         var cx = w / 2;
         var cy = h / 2;
 
-        // Menu-knopje (drie puntjes) bovenaan — altijd zichtbaar, tikbaar.
-        drawMenuDots(dc, cx, menuIconY(h));
+        // Hint onderaan: veeg omhoog voor het actiemenu.
+        drawMenuHint(dc, cx, h);
 
         // Laatste slide = Sync-tegel.
         if (onSyncTile()) {
@@ -194,14 +194,13 @@ class CardWalletView extends WatchUi.View {
         return (h * 0.14).toNumber();
     }
 
-    // Drie horizontale puntjes in een subtiel balkje als menu-affordance.
-    function drawMenuDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {
-        dc.setColor(0x333333, Graphics.COLOR_TRANSPARENT);
-        dc.fillRoundedRectangle(cx - 26, y - 11, 52, 22, 11);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(cx - 13, y, 3);
-        dc.fillCircle(cx, y, 3);
-        dc.fillCircle(cx + 13, y, 3);
+    // Subtiele hint: pijltje omhoog + "menu" onderaan het scherm.
+    function drawMenuHint(dc as Graphics.Dc, cx as Lang.Number, h as Lang.Number) as Void {
+        var y = (h * 0.88).toNumber();
+        dc.setColor(0x777777, Graphics.COLOR_TRANSPARENT);
+        // klein pijltje omhoog
+        dc.fillPolygon([[cx - 6, y + 2], [cx + 6, y + 2], [cx, y - 5]]);
+        dc.drawText(cx, y + 6, Graphics.FONT_XTINY, "menu", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Ligt (x,y) op het menu-knopje? Hele bovenrand telt, zodat het makkelijk

@@ -20,20 +20,28 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         } else if (dir == WatchUi.SWIPE_RIGHT) {
             view.prev();
             return true;
+        } else if (dir == WatchUi.SWIPE_UP || dir == WatchUi.SWIPE_DOWN) {
+            // Verticaal vegen opent het actiemenu.
+            openMenu();
+            return true;
         }
         return false;
     }
 
-    // Touch: onderscheid het menu-knopje van de rest via coördinaten.
+    // Touch: onderscheid het menu-knopje (bovenrand) van de rest.
     function onTap(clickEvent as WatchUi.ClickEvent) as Lang.Boolean {
         var coords = clickEvent.getCoordinates();
-        var x = coords[0];
-        var y = coords[1];
-        if (view.isMenuTap(x, y, view.screenW, view.screenH)) {
+        if (coords != null && view.isMenuTap(coords[0], coords[1], view.screenW, view.screenH)) {
             openMenu();
             return true;
         }
         primaryAction();
+        return true;
+    }
+
+    // Lang indrukken (standaard Garmin menu-gebaar op touch) opent het menu.
+    function onMenu() as Lang.Boolean {
+        openMenu();
         return true;
     }
 
