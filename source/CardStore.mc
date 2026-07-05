@@ -10,10 +10,23 @@ module CardStore {
     const USAGE_KEY = "usage";
     const COUNTER_KEY = "usageCounter";
 
-    // Stabiele id voor een kaart, onafhankelijk van lijstpositie.
+    // Stabiele id: type + data. Bewust ZONDER label, zodat een kaart
+    // hernoemen z'n identiteit (favoriet/gebruik) niet breekt.
     (:glance)
     function cardId(card as Lang.Dictionary) as Lang.String {
-        return card.get("label") + "|" + card.get("type") + "|" + card.get("data");
+        return card.get("type") + "|" + card.get("data");
+    }
+
+    // Werk een veld van de opgeslagen kaart met dit id bij (naam/sublabel/color).
+    function updateField(id as Lang.String, key as Lang.String, value) as Void {
+        var cards = rawCards();
+        for (var i = 0; i < cards.size(); i++) {
+            if (cardId(cards[i]).equals(id)) {
+                cards[i].put(key, value);
+                Storage.setValue(CARDS_KEY, cards);
+                return;
+            }
+        }
     }
 
     (:glance)

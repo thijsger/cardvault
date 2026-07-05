@@ -84,6 +84,9 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         if (card != null) {
             var fav = card.get("favorite") == true;
             menu.addItem(new WatchUi.MenuItem(fav ? "Favoriet weghalen" : "Favoriet maken", null, "fav", {}));
+            menu.addItem(new WatchUi.MenuItem("Naam wijzigen", null, "name", {}));
+            menu.addItem(new WatchUi.MenuItem("Subtitel wijzigen", null, "sub", {}));
+            menu.addItem(new WatchUi.MenuItem("Kleur wijzigen", null, "color", {}));
             menu.addItem(new WatchUi.MenuItem("Kaart verwijderen", null, "del", {}));
         }
         menu.addItem(new WatchUi.MenuItem(Pin.isSet() ? "Pincode wijzigen" : "Pincode instellen", null, "pinset", {}));
@@ -113,6 +116,29 @@ class WalletMenuDelegate extends WatchUi.Menu2InputDelegate {
                 view.onShow();
             }
             WatchUi.popView(WatchUi.SLIDE_DOWN);
+
+        } else if (id.equals("name")) {
+            if (card != null) {
+                WatchUi.popView(WatchUi.SLIDE_DOWN);
+                var ev = new TextEditView(view, card.get("id") as Lang.String, "label", card.get("label") as Lang.String, "Naam");
+                WatchUi.pushView(ev, new TextEditDelegate(ev), WatchUi.SLIDE_LEFT);
+            }
+
+        } else if (id.equals("sub")) {
+            if (card != null) {
+                WatchUi.popView(WatchUi.SLIDE_DOWN);
+                var sub = card.get("sublabel");
+                var cur = (sub == null) ? "" : sub.toString();
+                var ev = new TextEditView(view, card.get("id") as Lang.String, "sublabel", cur, "Subtitel");
+                WatchUi.pushView(ev, new TextEditDelegate(ev), WatchUi.SLIDE_LEFT);
+            }
+
+        } else if (id.equals("color")) {
+            if (card != null) {
+                WatchUi.popView(WatchUi.SLIDE_DOWN);
+                var cm = ColorPicker.build();
+                WatchUi.pushView(cm, new ColorMenuDelegate(view, card.get("id") as Lang.String), WatchUi.SLIDE_LEFT);
+            }
 
         } else if (id.equals("del")) {
             if (card != null) {
