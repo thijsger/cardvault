@@ -51,12 +51,64 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    // Menu-knop (indien het toestel er een heeft): favoriet aan/uit.
+    // Menu-knop / lang indrukken: acties voor de huidige kaart.
     function onMenu() as Lang.Boolean {
         var card = view.current();
-        if (card != null) {
-            CardStore.toggleFavorite(card.get("id") as Lang.String);
+        if (card == null) {
+            return true; // op de Sync-tegel: geen menu
+        }
+        var menu = new WatchUi.Menu2({ :title => card.get("label") as Lang.String });
+        var fav = card.get("favorite") == true;
+        menu.addItem(new WatchUi.MenuItem(fav ? "Favoriet weghalen" : "Favoriet maken", null, "fav", {}));
+        menu.addItem(new WatchUi.MenuItem("Verwijderen", null, "del", {}));
+        WatchUi.pushView(menu, new WalletMenuDelegate(view, card.get("id") as Lang.String), WatchUi.SLIDE_UP);
+        return true;
+    }
+}
+
+// Acties-menu vanuit de wallet (favoriet / verwijderen).
+class WalletMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var view as CardWalletView;
+    var cardId as Lang.String;
+
+    function initialize(v as CardWalletView, id as Lang.String) {
+        Menu2InputDelegate.initialize();
+        view = v;
+        cardId = id;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id.equals("fav")) {
+            CardStore.toggleFavorite(cardId);
             view.onShow();
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+        } else if (id.equals("del")) {
+            // Bevestiging tonen voordat er echt verwijderd wordt.
+            var confirm = new WatchUi.Confirmation("Kaart verwijderen?");
+            WatchUi.pushView(confirm, new DeleteConfirmDelegate(view, cardId), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+// Ja/nee-bevestiging voor verwijderen.
+class DeleteConfirmDelegate extends WatchUi.ConfirmationDelegate {
+    var view as CardWalletView;
+    var cardId as Lang.String;
+
+    function initialize(v as CardWalletView, id as Lang.String) {
+        ConfirmationDelegate.initialize();
+        view = v;
+        cardId = id;
+    }
+
+    function onResponse(response as WatchUi.Confirm) as Lang.Boolean {
+        if (response == WatchUi.CONFIRM_YES) {
+            CardStore.deleteById(cardId);
+            view.onShow();
+            // De bevestiging sluit zichzelf; het onderliggende menu poppen we
+            // zodat we terug bij de wallet uitkomen.
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
         }
         return true;
     }

@@ -21,6 +21,40 @@ module CardStore {
         Storage.setValue(CARDS_KEY, cards);
     }
 
+    // Voeg nieuwe kaarten toe zonder de bestaande te wissen (dedup op cardId).
+    // Geeft het aantal daadwerkelijk toegevoegde kaarten terug.
+    (:glance)
+    function mergeCards(newCards as Lang.Array<Lang.Dictionary>) as Lang.Number {
+        var existing = rawCards();
+        var ids = {} as Lang.Dictionary;
+        for (var i = 0; i < existing.size(); i++) {
+            ids.put(cardId(existing[i]), true);
+        }
+        var added = 0;
+        for (var i = 0; i < newCards.size(); i++) {
+            var id = cardId(newCards[i]);
+            if (!(ids.hasKey(id))) {
+                existing.add(newCards[i]);
+                ids.put(id, true);
+                added++;
+            }
+        }
+        Storage.setValue(CARDS_KEY, existing);
+        return added;
+    }
+
+    // Verwijder de kaart met dit id uit de opslag.
+    function deleteById(id as Lang.String) as Void {
+        var existing = rawCards();
+        var kept = [] as Lang.Array<Lang.Dictionary>;
+        for (var i = 0; i < existing.size(); i++) {
+            if (!cardId(existing[i]).equals(id)) {
+                kept.add(existing[i]);
+            }
+        }
+        Storage.setValue(CARDS_KEY, kept);
+    }
+
     (:glance)
     function rawCards() as Lang.Array<Lang.Dictionary> {
         var c = Storage.getValue(CARDS_KEY);

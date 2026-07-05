@@ -45,10 +45,15 @@ module SettingsParser {
         return text;
     }
 
-    // Herbouwt de kaartenlijst uit Garmin Connect-instellingen; bij lege
-    // instellingen val terug op de laatst gesyncte tekst (via de webapp).
+    // Startup-load: alleen als er nog geen kaarten zijn, importeer dan uit
+    // Garmin Connect-instellingen (of de laatst gesyncte tekst). Bestaande
+    // kaarten (incl. verwijderingen) blijven staan zodat sync/delete niet
+    // ongedaan gemaakt worden bij herstart.
     (:glance)
     function reload() as Void {
+        if (CardStore.rawCards().size() > 0) {
+            return;
+        }
         var text = rawSettingsText();
         if (StrUtil.trim(text).length() == 0) {
             var synced = Application.Storage.getValue("syncText");
@@ -56,14 +61,14 @@ module SettingsParser {
                 text = synced.toString();
             }
         }
-        reloadFromText(text);
+        CardStore.setCards(parseText(text));
     }
 
+    // Tekst -> array van kaart-dictionaries (zonder op te slaan).
     (:glance)
-    function reloadFromText(text as Lang.String) as Void {
+    function parseText(text as Lang.String) as Lang.Array<Lang.Dictionary> {
         var lines = StrUtil.split(text, "\n");
         var cards = [] as Lang.Array<Lang.Dictionary>;
-
         for (var i = 0; i < lines.size(); i++) {
             var line = StrUtil.trim(lines[i]);
             if (line.length() == 0) {
@@ -74,8 +79,19 @@ module SettingsParser {
                 cards.add(card);
             }
         }
+        return cards;
+    }
 
-        CardStore.setCards(cards);
+    // Vervang de volledige kaartenlijst (voor de testdata / expliciet resetten).
+    (:glance)
+    function reloadFromText(text as Lang.String) as Void {
+        CardStore.setCards(parseText(text));
+    }
+
+    // Voeg kaarten uit deze tekst toe zonder bestaande te wissen.
+    (:glance)
+    function mergeFromText(text as Lang.String) as Lang.Number {
+        return CardStore.mergeCards(parseText(text));
     }
 
     (:glance)

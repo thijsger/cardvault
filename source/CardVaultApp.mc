@@ -17,7 +17,8 @@ class CardVaultApp extends Application.AppBase {
     function onStop(state as Lang.Dictionary?) as Void {}
 
     function onSettingsChanged() as Void {
-        SettingsParser.reload();
+        // Nieuwe kaarten uit Garmin Connect toevoegen zonder bestaande te wissen.
+        SettingsParser.mergeFromText(SettingsParser.rawSettingsText());
         WatchUi.requestUpdate();
     }
 

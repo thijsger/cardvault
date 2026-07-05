@@ -37,9 +37,9 @@ class SyncView extends WatchUi.View {
         if (code == 200 && data != null && data.toString().length() > 0) {
             var text = data.toString();
             Storage.setValue("syncText", text);
-            SettingsParser.reloadFromText(text);
-            var n = CardStore.rawCards().size();
-            statusText = n.toString() + " kaart(en) geladen";
+            // Toevoegen zonder bestaande kaarten te wissen.
+            var added = SettingsParser.mergeFromText(text);
+            statusText = added.toString() + " nieuwe kaart(en)";
         } else if (code == 200) {
             statusText = "Niets gevonden voor deze code.";
         } else {
