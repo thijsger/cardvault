@@ -12,9 +12,7 @@ class CardVaultGlanceView extends WatchUi.GlanceView {
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
-        dc.setColor(Graphics.COLOR_TRANSPARENT, Graphics.COLOR_BLACK);
-        dc.clear();
-
+        // Transparant laten: geen eigen zwarte achtergrond tekenen.
         var h = dc.getHeight();
         var cy = h / 2;
 
@@ -24,7 +22,8 @@ class CardVaultGlanceView extends WatchUi.GlanceView {
         var iconY = cy - iconH / 2;
         dc.setColor(0x5B9DFF, Graphics.COLOR_TRANSPARENT);
         dc.fillRoundedRectangle(0, iconY, iconW, iconH, 4);
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        // Magneetstreep in dezelfde blauwtint maar donkerder (geen zwart blok).
+        dc.setColor(0x2A5FA0, Graphics.COLOR_TRANSPARENT);
         dc.fillRectangle(0, iconY + 5, iconW, 4);
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);

@@ -108,15 +108,19 @@ class CardWalletView extends WatchUi.View {
         var textColor = textColorFor(color);
         var dimColor = textColorDim(color);
 
-        // Chip (zoals op een bankpas), goudkleurig.
+        // Chip (zoals op een bankpas), goudkleurig. Penbreedte expliciet op 1
+        // zetten — een vorige weergave (barcode/QR) kan 'm dik hebben gelaten.
+        dc.setPenWidth(1);
         var chipX = cardX + 26;
-        var chipY = cardY + 26;
+        var chipY = cardY + 28;
+        var chipW = 44;
+        var chipH = 32;
         dc.setColor(0xD4AF37, Graphics.COLOR_TRANSPARENT);
-        dc.fillRoundedRectangle(chipX, chipY, 46, 34, 6);
-        dc.setColor(0x8A7020, Graphics.COLOR_TRANSPARENT);
-        dc.drawLine(chipX + 15, chipY, chipX + 15, chipY + 34);
-        dc.drawLine(chipX + 31, chipY, chipX + 31, chipY + 34);
-        dc.drawLine(chipX, chipY + 17, chipX + 46, chipY + 17);
+        dc.fillRoundedRectangle(chipX, chipY, chipW, chipH, 6);
+        // Eén subtiel middenlijntje: strakker dan een raster.
+        dc.setColor(0x9A7B20, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(chipX + chipW / 2 - 1, chipY + 6, 2, chipH - 12);
+        dc.fillRectangle(chipX + 8, chipY + chipH / 2 - 1, chipW - 16, 2);
 
         // Type-indicator rechtsboven.
         var type = card.get("type") as Lang.String;
@@ -135,25 +139,25 @@ class CardWalletView extends WatchUi.View {
         // Naam + subtekst linksonder, zoals de naam op een pas.
         var sub = card.get("sublabel") as Lang.String;
         var hasSub = (sub != null && sub.length() > 0);
+        var maxTextW = cardW - 40;
 
-        // Naam-font krimpt als de naam te breed is voor de kaart.
+        // Naam: kies het grootste font dat past.
         var name = card.get("label") as Lang.String;
-        var nameFont = Graphics.FONT_SMALL;
-        if (dc.getTextWidthInPixels(name, nameFont) > cardW - 44) {
-            nameFont = Graphics.FONT_XTINY;
-        }
+        var nameFont = fitFont(dc, name, maxTextW,
+            [Graphics.FONT_MEDIUM, Graphics.FONT_SMALL, Graphics.FONT_TINY, Graphics.FONT_XTINY]);
         var nameH = dc.getFontHeight(nameFont);
         var subH = dc.getFontHeight(Graphics.FONT_XTINY);
         var bottomMargin = 16;
 
         if (hasSub) {
             // Subtekst onderaan met vaste marge; naam er ruim boven.
+            var subFont = fitFont(dc, sub, maxTextW, [Graphics.FONT_XTINY]);
             var subY = cardY + cardH - bottomMargin - subH;
-            var nameY = subY - 14 - nameH;
+            var nameY = subY - 12 - nameH;
             dc.setColor(textColor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cardX + 24, nameY, nameFont, name, Graphics.TEXT_JUSTIFY_LEFT);
             dc.setColor(dimColor, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cardX + 24, subY, Graphics.FONT_XTINY, sub, Graphics.TEXT_JUSTIFY_LEFT);
+            dc.drawText(cardX + 24, subY, subFont, sub, Graphics.TEXT_JUSTIFY_LEFT);
         } else {
             dc.setColor(textColor, Graphics.COLOR_TRANSPARENT);
             dc.drawText(cardX + 24, cardY + cardH - bottomMargin - nameH, nameFont, name,
@@ -227,6 +231,16 @@ class CardWalletView extends WatchUi.View {
                 dc.fillCircle(startX + i * spacing, y, 3);
             }
         }
+    }
+
+    // Grootste font uit de lijst dat binnen maxW past (anders het kleinste).
+    function fitFont(dc as Graphics.Dc, text as Lang.String, maxW as Lang.Number, fonts as Lang.Array) as Graphics.FontDefinition {
+        for (var i = 0; i < fonts.size(); i++) {
+            if (dc.getTextWidthInPixels(text, fonts[i]) <= maxW) {
+                return fonts[i];
+            }
+        }
+        return fonts[fonts.size() - 1];
     }
 
     // Zwarte of witte tekst afhankelijk van de kaartkleur.
