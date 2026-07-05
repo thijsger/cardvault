@@ -1,6 +1,7 @@
 using Toybox.WatchUi;
 using Toybox.Graphics;
 using Toybox.Lang;
+using Toybox.System;
 
 // Wallet-weergave: één kaart tegelijk, groot en gecentreerd als een fysieke
 // pas (met chip en gestapelde randjes), swipe omhoog/omlaag om te bladeren,
@@ -16,8 +17,10 @@ class CardWalletView extends WatchUi.View {
         View.initialize();
         cards = [] as Lang.Array<Lang.Dictionary>;
         index = 0;
-        screenW = 260;
-        screenH = 260;
+        // Schermmaat direct betrouwbaar ophalen (niet wachten op onLayout).
+        var ds = System.getDeviceSettings();
+        screenW = ds.screenWidth;
+        screenH = ds.screenHeight;
     }
 
     function onLayout(dc as Graphics.Dc) as Void {
@@ -188,21 +191,23 @@ class CardWalletView extends WatchUi.View {
 
     // Y-positie van het menu-knopje.
     function menuIconY(h as Lang.Number) as Lang.Number {
-        return (h * 0.11).toNumber();
+        return (h * 0.14).toNumber();
     }
 
-    // Drie horizontale puntjes als menu-affordance.
+    // Drie horizontale puntjes in een subtiel balkje als menu-affordance.
     function drawMenuDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {
-        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(cx - 12, y, 3);
+        dc.setColor(0x333333, Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle(cx - 26, y - 11, 52, 22, 11);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(cx - 13, y, 3);
         dc.fillCircle(cx, y, 3);
-        dc.fillCircle(cx + 12, y, 3);
+        dc.fillCircle(cx + 13, y, 3);
     }
 
-    // Ligt (x,y) op het menu-knopje? Ruime trefzone voor gemak.
+    // Ligt (x,y) op het menu-knopje? Hele bovenrand telt, zodat het makkelijk
+    // te raken is (de kaartinhoud staat in het midden).
     function isMenuTap(x as Lang.Number, y as Lang.Number, w as Lang.Number, h as Lang.Number) as Lang.Boolean {
-        var iy = menuIconY(h);
-        return (y < iy + 40) && (x > w / 2 - 60) && (x < w / 2 + 60);
+        return y < (h * 0.24).toNumber();
     }
 
     function drawDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {
