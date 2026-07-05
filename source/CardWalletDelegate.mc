@@ -1,5 +1,7 @@
 using Toybox.WatchUi;
 using Toybox.Lang;
+using Toybox.Communications;
+using Toybox.Application.Storage;
 
 // Wallet-besturing: swipe = bladeren, tik op een kaart = code tonen, tik op de
 // Sync-tegel = synchroniseren, tik op het menu-knopje (drie puntjes) = acties.
@@ -65,8 +67,8 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
 
     function primaryAction() as Void {
         if (view.onSyncTile()) {
-            var sv = new SyncView();
-            WatchUi.pushView(sv, new SyncDelegate(sv), WatchUi.SLIDE_LEFT);
+            // Tik op de sync-tegel = meteen ophalen (geen tussenscherm).
+            doSync();
             return;
         }
         var card = view.current();
@@ -76,6 +78,35 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         CardStore.markUsed(card.get("id") as Lang.String);
         var display = new CardDisplayView(card);
         WatchUi.pushView(display, new CardDisplayDelegate(display, card), WatchUi.SLIDE_LEFT);
+    }
+
+    // Haalt kaarten op en toont de status op de sync-tegel zelf.
+    function doSync() as Void {
+        view.syncStatus = "Ophalen...";
+        WatchUi.requestUpdate();
+        Communications.makeWebRequest(
+            Sync.pullUrl(),
+            {},
+            {
+                :method => Communications.HTTP_REQUEST_METHOD_GET,
+                :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_TEXT_PLAIN
+            },
+            method(:onSyncData)
+        );
+    }
+
+    function onSyncData(code as Lang.Number, data as Lang.String or Null) as Void {
+        if (code == 200 && data != null && data.toString().length() > 0) {
+            var text = data.toString();
+            Storage.setValue("syncText", text);
+            var added = SettingsParser.mergeFromText(text);
+            view.syncStatus = added.toString() + " nieuwe kaart(en)";
+        } else if (code == 200) {
+            view.syncStatus = "Niets gevonden";
+        } else {
+            view.syncStatus = "Geen verbinding";
+        }
+        view.onShow();
     }
 
     function openMenu() as Void {

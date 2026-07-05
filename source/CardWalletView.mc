@@ -12,11 +12,13 @@ class CardWalletView extends WatchUi.View {
     var index as Lang.Number;
     var screenW as Lang.Number;
     var screenH as Lang.Number;
+    var syncStatus as Lang.String;
 
     function initialize() {
         View.initialize();
         cards = [] as Lang.Array<Lang.Dictionary>;
         index = 0;
+        syncStatus = "";
         // Schermmaat direct betrouwbaar ophalen (niet wachten op onLayout).
         var ds = System.getDeviceSettings();
         screenW = ds.screenWidth;
@@ -189,8 +191,10 @@ class CardWalletView extends WatchUi.View {
         dc.drawText(cx, ty + tileH / 2 + 14, Graphics.FONT_NUMBER_MEDIUM, Sync.deviceCode(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
+        // Onderaan: status na een sync, anders de tik-hint.
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + tileH - 46, Graphics.FONT_XTINY, "Tik om op te halen", Graphics.TEXT_JUSTIFY_CENTER);
+        var bottom = syncStatus.equals("") ? "Tik om op te halen" : syncStatus;
+        dc.drawText(cx, ty + tileH - 46, Graphics.FONT_XTINY, bottom, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Y-positie van het menu-knopje.
