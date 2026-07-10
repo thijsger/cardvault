@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <settings>
-    <setting propertyKey="@Properties.cardsData0" title="Kaarten (1/4)">
+    <setting propertyKey="@Properties.cardsData0" title="Cards (1/4)">
         <settingConfig type="alphaNumeric" maxLength="1900"/>
     </setting>
-    <setting propertyKey="@Properties.cardsData1" title="Kaarten (2/4)">
+    <setting propertyKey="@Properties.cardsData1" title="Cards (2/4)">
         <settingConfig type="alphaNumeric" maxLength="1900"/>
     </setting>
-    <setting propertyKey="@Properties.cardsData2" title="Kaarten (3/4)">
+    <setting propertyKey="@Properties.cardsData2" title="Cards (3/4)">
         <settingConfig type="alphaNumeric" maxLength="1900"/>
     </setting>
-    <setting propertyKey="@Properties.cardsData3" title="Kaarten (4/4)">
+    <setting propertyKey="@Properties.cardsData3" title="Cards (4/4)">
         <settingConfig type="alphaNumeric" maxLength="1900"/>
     </setting>
 </settings>

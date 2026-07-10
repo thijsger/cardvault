@@ -8,13 +8,13 @@ module ColorPicker {
 
     const NAMES = ["blue", "green", "orange", "purple", "red",
                    "pink", "yellow", "dkblue", "dkgreen", "dkgray"];
-    const LABELS = ["Blauw", "Groen", "Oranje", "Paars", "Rood",
-                    "Roze", "Geel", "Donkerblauw", "Donkergroen", "Grijs"];
+    const LABELS = ["Blue", "Green", "Orange", "Purple", "Red",
+                    "Pink", "Yellow", "Dark blue", "Dark green", "Gray"];
     const VALUES = [0x1e90ff, 0x34c759, 0xff9500, 0xaf52de, 0xff3b30,
                     0xff2d92, 0xffd60a, 0x0a3d91, 0x1b6b2f, 0x3a3a3a];
 
     function build() as WatchUi.Menu2 {
-        var menu = new WatchUi.Menu2({ :title => "Kleur" });
+        var menu = new WatchUi.Menu2({ :title => "Color" });
         for (var i = 0; i < NAMES.size(); i++) {
             menu.addItem(new WatchUi.MenuItem(LABELS[i], null, NAMES[i], {}));
         }

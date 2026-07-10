@@ -34,9 +34,9 @@ class PinView extends WatchUi.View {
     }
 
     function titleFor(m as Lang.Number) as Lang.String {
-        if (m == MODE_SET) { return "Nieuwe pincode"; }
-        if (m == MODE_DISABLE) { return "Pincode invoeren"; }
-        return "Pincode";
+        if (m == MODE_SET) { return "New PIN"; }
+        if (m == MODE_DISABLE) { return "Enter PIN"; }
+        return "PIN";
     }
 
     function onLayout(dc as Graphics.Dc) as Void {
@@ -135,16 +135,16 @@ class PinView extends WatchUi.View {
 
         if (mode == MODE_UNLOCK) {
             if (Pin.verify(code)) { return "unlocked"; }
-            return fail("Onjuist. Opnieuw.");
+            return fail("Wrong. Try again.");
         }
         if (mode == MODE_DISABLE) {
             if (Pin.verify(code)) { Pin.clear(); return "disabled"; }
-            return fail("Onjuist. Opnieuw.");
+            return fail("Wrong. Try again.");
         }
         // MODE_SET: twee keer invoeren
         if (firstEntry.equals("")) {
             firstEntry = code;
-            message = "Herhaal pincode";
+            message = "Repeat PIN";
             WatchUi.requestUpdate();
             return "again";
         }
@@ -153,7 +153,7 @@ class PinView extends WatchUi.View {
             return "saved";
         }
         firstEntry = "";
-        return fail("Komt niet overeen.");
+        return fail("Does not match.");
     }
 
     function fail(msg as Lang.String) as Lang.String {

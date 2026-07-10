@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <strings>
     <string id="AppName">CardVault</string>
-    <string id="NoCards">Geen kaarten. Voeg toe via Garmin Connect.</string>
-    <string id="StorageFull">Opslag vol — verwijder een kaart om toe te voegen.</string>
-    <string id="TapToRefresh">Tik om te verversen</string>
+    <string id="NoCards">No cards. Add them via Garmin Connect.</string>
+    <string id="StorageFull">Storage full — delete a card to add one.</string>
+    <string id="TapToRefresh">Tap to refresh</string>
 </strings>

@@ -51,14 +51,12 @@ class CardDisplayView extends WatchUi.View {
 
     function flashFavorite(isFavorite as Lang.Boolean) as Void {
         favoriteFlashUntil = secondsShown + 2;
-        favoriteFlashText = isFavorite ? "★ favoriet" : "☆ niet meer favoriet";
+        favoriteFlashText = isFavorite ? "* favorite" : "not a favorite";
         WatchUi.requestUpdate();
     }
 
     function onShow() as Void {
-        if (Attention has :backlight) {
-            Attention.backlight(true);
-        }
+        forceBacklight();
         timer = new Timer.Timer();
         (timer as Timer.Timer).start(method(:onTick), 1000, true);
     }
@@ -72,11 +70,22 @@ class CardDisplayView extends WatchUi.View {
 
     function onTick() as Void {
         secondsShown++;
-        // Backlight-limiet per device: elke ~20s opnieuw aanvragen.
-        if (secondsShown % 20 == 0 && Attention has :backlight) {
-            Attention.backlight(true);
+        // Backlight elke paar seconden opnieuw aanvragen: MIP-schermen
+        // (bv. Vivoactive 4) hebben een korte backlight-timeout.
+        if (secondsShown % 4 == 0) {
+            forceBacklight();
         }
         WatchUi.requestUpdate();
+    }
+
+    function forceBacklight() as Void {
+        if (Attention has :backlight) {
+            try {
+                Attention.backlight(true);
+            } catch (e) {
+                // Sommige toestellen staan dit niet toe; negeren.
+            }
+        }
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
@@ -134,11 +143,15 @@ class CardDisplayView extends WatchUi.View {
         var start = ((rotated ? h : w) - totalLen) / 2;
         var bandStart = ((rotated ? w : h) - barBandHeight) / 2;
 
-        // Titel ruim boven de band (alleen in normale stand).
+        // Titel boven de band (alleen in normale stand). Font krimpt zodat
+        // lange namen op elk scherm passen; positie schaalt met de schermhoogte.
+        var maxTextW = w - 24;
         if (!rotated) {
+            var label = card.get("label") as Lang.String;
+            var lf = fitText(dc, label, maxTextW);
+            var labelY = bandStart - dc.getFontHeight(lf) - (h * 0.05).toNumber();
             dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, bandStart - 74, Graphics.FONT_TINY,
-                card.get("label") as Lang.String, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, labelY, lf, label, Graphics.TEXT_JUSTIFY_CENTER);
         }
 
         // Bars.
@@ -161,12 +174,25 @@ class CardDisplayView extends WatchUi.View {
             }
         }
 
-        // Nummer met wat lucht onder de band (alleen in normale stand).
+        // Nummer onder de band (alleen in normale stand). Ook shrink-to-fit,
+        // zodat lange CODE128-nummers niet worden afgekapt.
         if (!rotated) {
+            var nf = fitText(dc, data, maxTextW);
+            var numY = bandStart + barBandHeight + (h * 0.06).toNumber();
             dc.setColor(fg, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, bandStart + barBandHeight + 34, Graphics.FONT_TINY, data,
-                Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, numY, nf, data, Graphics.TEXT_JUSTIFY_CENTER);
         }
+    }
+
+    // Grootste font dat binnen maxW past (voor namen/nummers op kleine schermen).
+    function fitText(dc as Graphics.Dc, text as Lang.String, maxW as Lang.Number) as Graphics.FontDefinition {
+        var fonts = [Graphics.FONT_TINY, Graphics.FONT_XTINY];
+        for (var i = 0; i < fonts.size(); i++) {
+            if (dc.getTextWidthInPixels(text, fonts[i]) <= maxW) {
+                return fonts[i];
+            }
+        }
+        return Graphics.FONT_XTINY;
     }
 
     function drawQr(dc as Graphics.Dc, fg as Lang.Number, bg as Lang.Number) as Void {

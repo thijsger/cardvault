@@ -6,7 +6,7 @@
         launcherIcon="@Drawables.LauncherIcon"
         minSdkVersion="3.2.0"
         name="@Strings.AppName"
-        type="widget">
+        type="watch-app">
         <iq:products>
             <iq:product id="venu2"/>
             <iq:product id="venu2s"/>

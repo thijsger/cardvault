@@ -14,6 +14,8 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         view = v;
     }
 
+    // Horizontaal vegen = bladeren. Verticaal vegen NIET gebruiken: op sommige
+    // toestellen (bv. Vivoactive 4) sluit omhoog vegen de app af.
     function onSwipe(swipeEvent as WatchUi.SwipeEvent) as Lang.Boolean {
         var dir = swipeEvent.getDirection();
         if (dir == WatchUi.SWIPE_LEFT) {
@@ -22,15 +24,11 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         } else if (dir == WatchUi.SWIPE_RIGHT) {
             view.prev();
             return true;
-        } else if (dir == WatchUi.SWIPE_UP || dir == WatchUi.SWIPE_DOWN) {
-            // Verticaal vegen opent het actiemenu.
-            openMenu();
-            return true;
         }
         return false;
     }
 
-    // Touch: onderscheid het menu-knopje (bovenrand) van de rest.
+    // Touch: tik op de menu-knop (bovenrand) opent het menu, elders = primair.
     function onTap(clickEvent as WatchUi.ClickEvent) as Lang.Boolean {
         var coords = clickEvent.getCoordinates();
         if (coords != null && view.isMenuTap(coords[0], coords[1], view.screenW, view.screenH)) {
@@ -41,27 +39,26 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
-    // Lang indrukken (standaard Garmin menu-gebaar op touch) opent het menu.
+    // Lang indrukken / menu-knop opent het menu (device-onafhankelijk).
     function onMenu() as Lang.Boolean {
         openMenu();
         return true;
     }
 
-    // Fysieke knop: primaire actie (kaart/sync openen).
+    // Fysieke select-knop: primaire actie (kaart/sync openen).
     function onSelect() as Lang.Boolean {
         primaryAction();
         return true;
     }
 
-    // Verticaal vegen komt op de Venu 3 binnen als onNextPage/onPreviousPage.
-    // Bladeren doe je met horizontaal vegen, dus verticaal opent het menu.
+    // Fysieke omhoog/omlaag-knoppen (bv. Vivoactive 4): bladeren.
     function onNextPage() as Lang.Boolean {
-        openMenu();
+        view.next();
         return true;
     }
 
     function onPreviousPage() as Lang.Boolean {
-        openMenu();
+        view.prev();
         return true;
     }
 
@@ -82,7 +79,9 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
 
     // Haalt kaarten op en toont de status op de sync-tegel zelf.
     function doSync() as Void {
-        view.syncStatus = "Ophalen...";
+        // Sync is nu bewust gebruikt: zet auto-sync bij volgende starts aan.
+        Storage.setValue("syncEnabled", true);
+        view.syncStatus = "Fetching...";
         WatchUi.requestUpdate();
         Communications.makeWebRequest(
             Sync.pullUrl(),
@@ -100,11 +99,11 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
             var text = data.toString();
             Storage.setValue("syncText", text);
             var added = SettingsParser.mergeFromText(text);
-            view.syncStatus = added.toString() + " nieuwe kaart(en)";
+            view.syncStatus = added.toString() + " new card(s)";
         } else if (code == 200) {
-            view.syncStatus = "Niets gevonden";
+            view.syncStatus = "Nothing found";
         } else {
-            view.syncStatus = "Geen verbinding";
+            view.syncStatus = "No connection";
         }
         view.onShow();
     }
@@ -114,15 +113,15 @@ class CardWalletDelegate extends WatchUi.BehaviorDelegate {
         var card = view.current();
         if (card != null) {
             var fav = card.get("favorite") == true;
-            menu.addItem(new WatchUi.MenuItem(fav ? "Favoriet weghalen" : "Favoriet maken", null, "fav", {}));
-            menu.addItem(new WatchUi.MenuItem("Naam wijzigen", null, "name", {}));
-            menu.addItem(new WatchUi.MenuItem("Subtitel wijzigen", null, "sub", {}));
-            menu.addItem(new WatchUi.MenuItem("Kleur wijzigen", null, "color", {}));
-            menu.addItem(new WatchUi.MenuItem("Kaart verwijderen", null, "del", {}));
+            menu.addItem(new WatchUi.MenuItem(fav ? "Remove favorite" : "Make favorite", null, "fav", {}));
+            menu.addItem(new WatchUi.MenuItem("Edit name", null, "name", {}));
+            menu.addItem(new WatchUi.MenuItem("Edit subtitle", null, "sub", {}));
+            menu.addItem(new WatchUi.MenuItem("Change color", null, "color", {}));
+            menu.addItem(new WatchUi.MenuItem("Delete card", null, "del", {}));
         }
-        menu.addItem(new WatchUi.MenuItem(Pin.isSet() ? "Pincode wijzigen" : "Pincode instellen", null, "pinset", {}));
+        menu.addItem(new WatchUi.MenuItem(Pin.isSet() ? "Change PIN" : "Set PIN", null, "pinset", {}));
         if (Pin.isSet()) {
-            menu.addItem(new WatchUi.MenuItem("Pincode uitzetten", null, "pinoff", {}));
+            menu.addItem(new WatchUi.MenuItem("Turn off PIN", null, "pinoff", {}));
         }
         WatchUi.pushView(menu, new WalletMenuDelegate(view), WatchUi.SLIDE_UP);
     }
@@ -151,7 +150,7 @@ class WalletMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id.equals("name")) {
             if (card != null) {
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
-                var ev = new TextEditView(view, card.get("id") as Lang.String, "label", card.get("label") as Lang.String, "Naam");
+                var ev = new TextEditView(view, card.get("id") as Lang.String, "label", card.get("label") as Lang.String, "Name");
                 WatchUi.pushView(ev, new TextEditDelegate(ev), WatchUi.SLIDE_LEFT);
             }
 
@@ -160,7 +159,7 @@ class WalletMenuDelegate extends WatchUi.Menu2InputDelegate {
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
                 var sub = card.get("sublabel");
                 var cur = (sub == null) ? "" : sub.toString();
-                var ev = new TextEditView(view, card.get("id") as Lang.String, "sublabel", cur, "Subtitel");
+                var ev = new TextEditView(view, card.get("id") as Lang.String, "sublabel", cur, "Subtitle");
                 WatchUi.pushView(ev, new TextEditDelegate(ev), WatchUi.SLIDE_LEFT);
             }
 
@@ -173,7 +172,7 @@ class WalletMenuDelegate extends WatchUi.Menu2InputDelegate {
 
         } else if (id.equals("del")) {
             if (card != null) {
-                var confirm = new WatchUi.Confirmation("Kaart verwijderen?");
+                var confirm = new WatchUi.Confirmation("Delete card?");
                 WatchUi.pushView(confirm, new DeleteConfirmDelegate(view, card.get("id") as Lang.String), WatchUi.SLIDE_LEFT);
             }
 

@@ -77,7 +77,7 @@ class CardWalletView extends WatchUi.View {
         var cy = h / 2;
 
         // Hint onderaan: veeg omhoog voor het actiemenu.
-        drawMenuHint(dc, cx, h);
+        drawMenuButton(dc, cx, h);
 
         // Laatste slide = Sync-tegel.
         if (onSyncTile()) {
@@ -171,30 +171,31 @@ class CardWalletView extends WatchUi.View {
     }
 
     // Sync-tegel: altijd bereikbaar door voorbij de laatste kaart te swipen.
+    // Alle posities proportioneel zodat het ook op kleine schermen past.
     function drawSyncTile(dc as Graphics.Dc, cx as Lang.Number, cy as Lang.Number, w as Lang.Number, h as Lang.Number) as Void {
-        var tileW = (w * 0.76).toNumber();
-        var tileH = (h * 0.56).toNumber();
+        var tileW = (w * 0.78).toNumber();
+        var tileH = (h * 0.60).toNumber();
         var tx = cx - tileW / 2;
-        var ty = cy - tileH / 2 - 10;
+        var ty = cy - tileH / 2 - 6;
 
         dc.setColor(0x1A2A3A, Graphics.COLOR_TRANSPARENT);
-        dc.fillRoundedRectangle(tx, ty, tileW, tileH, 22);
+        dc.fillRoundedRectangle(tx, ty, tileW, tileH, 20);
 
-        // "SYNC" bovenaan, "Koppelcode" eronder, dan de grote code gecentreerd.
         dc.setColor(0x5B9DFF, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + 20, Graphics.FONT_TINY, "SYNC", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, ty + tileH * 0.10, Graphics.FONT_TINY, "SYNC", Graphics.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + 54, Graphics.FONT_XTINY, "Koppelcode", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, ty + tileH * 0.30, Graphics.FONT_XTINY, "Pairing code", Graphics.TEXT_JUSTIFY_CENTER);
 
+        // De koppelcode bevat LETTERS — gebruik een gewoon (geen cijfer-)font,
+        // anders renderen letters als lege blokjes op sommige toestellen.
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, ty + tileH / 2 + 14, Graphics.FONT_NUMBER_MEDIUM, Sync.deviceCode(),
+        dc.drawText(cx, ty + tileH * 0.52, Graphics.FONT_LARGE, Sync.deviceCode(),
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        // Onderaan: status na een sync, anders de tik-hint.
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        var bottom = syncStatus.equals("") ? "Tik om op te halen" : syncStatus;
-        dc.drawText(cx, ty + tileH - 46, Graphics.FONT_XTINY, bottom, Graphics.TEXT_JUSTIFY_CENTER);
+        var bottom = syncStatus.equals("") ? "Tap to fetch" : syncStatus;
+        dc.drawText(cx, ty + tileH * 0.82, Graphics.FONT_XTINY, bottom, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Y-positie van het menu-knopje.
@@ -202,19 +203,21 @@ class CardWalletView extends WatchUi.View {
         return (h * 0.14).toNumber();
     }
 
-    // Subtiele hint: pijltje omhoog + "menu" onderaan het scherm.
-    function drawMenuHint(dc as Graphics.Dc, cx as Lang.Number, h as Lang.Number) as Void {
-        var y = (h * 0.88).toNumber();
-        dc.setColor(0x777777, Graphics.COLOR_TRANSPARENT);
-        // klein pijltje omhoog
-        dc.fillPolygon([[cx - 6, y + 2], [cx + 6, y + 2], [cx, y - 5]]);
-        dc.drawText(cx, y + 6, Graphics.FONT_XTINY, "menu", Graphics.TEXT_JUSTIFY_CENTER);
+    // Duidelijk tikbaar menu-knopje bovenaan: pil met drie puntjes.
+    function drawMenuButton(dc as Graphics.Dc, cx as Lang.Number, h as Lang.Number) as Void {
+        var y = (h * 0.11).toNumber();
+        dc.setColor(0x2A2A2A, Graphics.COLOR_TRANSPARENT);
+        dc.fillRoundedRectangle(cx - 30, y - 12, 60, 24, 12);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(cx - 12, y, 3);
+        dc.fillCircle(cx, y, 3);
+        dc.fillCircle(cx + 12, y, 3);
     }
 
-    // Ligt (x,y) op het menu-knopje? Hele bovenrand telt, zodat het makkelijk
+    // Ligt (x,y) op de menu-knop? Hele bovenrand telt, zodat het makkelijk
     // te raken is (de kaartinhoud staat in het midden).
     function isMenuTap(x as Lang.Number, y as Lang.Number, w as Lang.Number, h as Lang.Number) as Lang.Boolean {
-        return y < (h * 0.24).toNumber();
+        return y < (h * 0.22).toNumber();
     }
 
     function drawDots(dc as Graphics.Dc, cx as Lang.Number, y as Lang.Number) as Void {

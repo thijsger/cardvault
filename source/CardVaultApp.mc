@@ -14,12 +14,17 @@ class CardVaultApp extends Application.AppBase {
         // Bouw kaarten uit Garmin Connect-instellingen; bij lege instellingen
         // val terug op eerder via de webapp gesyncte kaarten.
         SettingsParser.reload();
-        // Automatisch nieuwe kaarten ophalen van de server (op de achtergrond).
+        // Automatisch nieuwe kaarten ophalen (alleen als sync ooit is gebruikt).
         autoSync();
     }
 
     // Haalt stil kaarten op voor de koppelcode; nieuwe verschijnen vanzelf.
+    // Doet NIETS als de gebruiker sync nooit heeft gebruikt — zo maakt een
+    // puur offline gebruiker (alleen Garmin Connect) geen enkel netwerkverzoek.
     function autoSync() as Void {
+        if (Storage.getValue("syncEnabled") != true) {
+            return;
+        }
         Communications.makeWebRequest(
             Sync.pullUrl(),
             {},

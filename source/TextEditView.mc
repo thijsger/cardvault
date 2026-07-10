@@ -87,8 +87,8 @@ class TextEditView extends WatchUi.View {
 
         // Hints.
         dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.76, Graphics.FONT_XTINY, "veeg = kies  tik = toevoegen", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(cx, h * 0.83, Graphics.FONT_XTINY, "omhoog = wis  terug = klaar", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.76, Graphics.FONT_XTINY, "swipe = pick  tap = add", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.83, Graphics.FONT_XTINY, "up = delete  back = done", Graphics.TEXT_JUSTIFY_CENTER);
     }
 }
 
